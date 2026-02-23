@@ -1,0 +1,136 @@
+import java.util.Arrays;
+import java.util.concurrent.ThreadLocalRandom;
+
+/**
+ * BubbleSortBenchmark
+ * 
+ * Ejecuta pruebas de Bubble Sort en 3 escenarios (aleatorio, creciente, decreciente)
+ * y varios tamanos. Imprime resultados en CSV a stdout.
+ * 
+ * Incluye dos versiones:
+ *  - bubbleSortBasico: Bubble Sort tradicional.
+ *  - bubbleSortOptimizado: usa "ultimaPosicionIntercambio" para reducir pasadas.
+ */
+public class BubbleSortBenchmark {
+
+    enum Scenario {
+        RANDOM,
+        ASCENDING,
+        DESCENDING
+    }
+
+    public static void main(String[] args) {
+        int[] sizes = new int[] {10, 100, 1000, 5000, 10000, 20000};
+
+        // Ajustes de benchmarking
+        int warmupRuns = 3;        // ejecuciones de calentamiento (no se reportan)
+        int measuredRuns = 7;      // ejecuciones medidas (se promedia)
+
+        System.out.println("algorithm,scenario,n,run,ns");
+
+        for (int n : sizes) {
+            for (Scenario sc : Scenario.values()) {
+                // Warmup
+                for (int i = 0; i < warmupRuns; i++) {
+                    int[] base = generateArray(n, sc);
+                    int[] a1 = Arrays.copyOf(base, base.length);
+                    int[] a2 = Arrays.copyOf(base, base.length);
+                    bubbleSortBasico(a1);
+                    bubbleSortOptimizado(a2);
+                }
+
+                // Measured
+                for (int run = 1; run <= measuredRuns; run++) {
+                    int[] base = generateArray(n, sc);
+
+                    int[] a1 = Arrays.copyOf(base, base.length);
+                    long t1 = System.nanoTime();
+                    bubbleSortBasico(a1);
+                    long t2 = System.nanoTime();
+                    System.out.println("basic," + sc.name().toLowerCase() + "," + n + "," + run + "," + (t2 - t1));
+
+                    int[] a2 = Arrays.copyOf(base, base.length);
+                    long t3 = System.nanoTime();
+                    bubbleSortOptimizado(a2);
+                    long t4 = System.nanoTime();
+                    System.out.println("optimized," + sc.name().toLowerCase() + "," + n + "," + run + "," + (t4 - t3));
+                }
+            }
+        }
+    }
+
+    /**
+     * Genera arreglos segun escenario.
+     */
+    static int[] generateArray(int n, Scenario scenario) {
+        int[] arr = new int[n];
+        switch (scenario) {
+            case RANDOM:
+                // Rango amplio para reducir colisiones
+                for (int i = 0; i < n; i++) {
+                    arr[i] = ThreadLocalRandom.current().nextInt(-1_000_000, 1_000_001);
+                }
+                break;
+            case ASCENDING:
+                for (int i = 0; i < n; i++) {
+                    arr[i] = i;
+                }
+                break;
+            case DESCENDING:
+                for (int i = 0; i < n; i++) {
+                    arr[i] = n - 1 - i;
+                }
+                break;
+            default:
+                throw new IllegalArgumentException("Escenario no soportado");
+        }
+        return arr;
+    }
+
+    /**
+     * Bubble Sort tradicional.
+     */
+    static void bubbleSortBasico(int[] arr) {
+        int n = arr.length;
+        boolean swapped;
+        for (int i = 0; i < n - 1; i++) {
+            swapped = false;
+            for (int j = 0; j < n - 1 - i; j++) {
+                if (arr[j] > arr[j + 1]) {
+                    int tmp = arr[j];
+                    arr[j] = arr[j + 1];
+                    arr[j + 1] = tmp;
+                    swapped = true;
+                }
+            }
+            if (!swapped) {
+                break; // ya esta ordenado
+            }
+        }
+    }
+
+    /**
+     * Bubble Sort optimizado usando "ultimaPosicionIntercambio".
+     * 
+     * Idea:
+     * - Despues de cada pasada, la parte final desde (ultimaPosicionIntercambio+1)
+     *   hasta el final ya quedo en orden.
+     * - Se reduce el limite superior del bucle interno a esa ultima posicion.
+     */
+    static void bubbleSortOptimizado(int[] arr) {
+        int n = arr.length;
+        int upper = n - 1;
+        while (upper > 0) {
+            int lastSwap = 0;
+            for (int j = 0; j < upper; j++) {
+                if (arr[j] > arr[j + 1]) {
+                    int tmp = arr[j];
+                    arr[j] = arr[j + 1];
+                    arr[j + 1] = tmp;
+                    lastSwap = j;
+                }
+            }
+            upper = lastSwap;
+        }
+    }
+}
